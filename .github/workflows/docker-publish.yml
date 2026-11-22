@@ -6,6 +6,7 @@ on:
 
 env:
   IMAGE: ${{ secrets.DOCKER_USER }}/${{ secrets.CONTAINER_NAME }}
+  TRIVY: docker run --rm -v /home/runner/.docker/config.json:/root/.docker/config.json:ro aquasec/trivy:0.76.2
 
 jobs:
   # Each platform is built on a native runner, as compiling FFmpeg under QEMU emulation is very slow
@@ -44,7 +45,8 @@ jobs:
           FFMPEG_VERSION=${{ github.ref_name }}
         tags: ${{ env.IMAGE }}:${{ github.ref_name }}-${{ matrix.arch }}
 
-  # Combine the per-platform images into the multi-platform tags
+  # Scan the per-platform images, then combine them into the multi-platform tags.
+  # Fixable HIGH/CRITICAL vulnerabilities fail the release; MEDIUM ones only produce a warning.
   merge:
     needs: build
     runs-on: ubuntu-latest
@@ -57,6 +59,18 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USER }}
         password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Trivy scan (HIGH, CRITICAL)
+      run: |
+        for arch in amd64 arm64; do
+          $TRIVY image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$IMAGE:$GITHUB_REF_NAME-$arch"
+        done
+
+    - name: Trivy scan (MEDIUM)
+      run: |
+        status=0
+        $TRIVY image --scanners vuln --severity MEDIUM --ignore-unfixed --exit-code 2 "$IMAGE:$GITHUB_REF_NAME-amd64" || status=$?
+        if [ "$status" = 2 ]; then echo "::warning::Trivy found MEDIUM vulnerabilities, see the scan output"; elif [ "$status" != 0 ]; then exit "$status"; fi
 
     - name: Create multi-platform tags
       run: |
