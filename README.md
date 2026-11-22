@@ -44,7 +44,7 @@ External libraries such as libx264, libmp3lame or libdav1d are not included.
 
 ## Tags
 
-Image tags follow FFmpeg release tags, for example `n9.1` or `n7.1`. `latest` points to the most recent release.
+Image tags follow FFmpeg release tags, for example `n9.1` or `n7.1`. `latest` points to the most recent release. Per-architecture tags such as `n9.1-amd64` and `n9.1-arm64` are also published; they are used to assemble the multi-platform tags.
 
 ## Building
 
@@ -56,7 +56,7 @@ docker build --build-arg FFMPEG_VERSION=n9.1 -t onerahmet/ffmpeg:n9.1 .
 
 ## Releasing
 
-Pushing a git tag named after an FFmpeg release (for example `n9.1`) builds the image for both platforms and publishes it to Docker Hub as that tag and `latest`.
+Pushing a git tag named after an FFmpeg release (for example `n9.1`) builds the image natively on amd64 and arm64 runners, publishes it to Docker Hub as that tag and `latest`, and then creates a GitHub release.
 
 ## License
 

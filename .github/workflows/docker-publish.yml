@@ -1,49 +1,73 @@
 name: Publish Docker Image
 on:
   push:
-    tags:        
+    tags:
       - '*'
 
 env:
-  DOCKER_USER: ${{secrets.DOCKER_USER}}
-  DOCKER_PASSWORD: ${{secrets.DOCKER_PASSWORD}}
-  CONTAINER_NAME: ${{secrets.CONTAINER_NAME}}
+  IMAGE: ${{ secrets.DOCKER_USER }}/${{ secrets.CONTAINER_NAME }}
 
 jobs:
+  # Each platform is built on a native runner, as compiling FFmpeg under QEMU emulation is very slow
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
     - name: Checkout
       uses: actions/checkout@v5
-    
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v4
-    
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
-    
+
     - name: Login to DockerHub
       uses: docker/login-action@v4
       with:
         username: ${{ secrets.DOCKER_USER }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-    
+
     - name: Build and push
       uses: docker/build-push-action@v7
       with:
         context: .
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ matrix.platform }}
         push: true
+        provenance: false
         build-args: |
           FFMPEG_VERSION=${{ github.ref_name }}
-        tags: |
-          ${{ env.DOCKER_USER }}/${{ env.CONTAINER_NAME }}:latest
-          ${{ env.DOCKER_USER }}/${{ env.CONTAINER_NAME }}:${{ github.ref_name }}
-        
+        tags: ${{ env.IMAGE }}:${{ github.ref_name }}-${{ matrix.arch }}
+
+  # Combine the per-platform images into the multi-platform tags
+  merge:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v4
+      with:
+        username: ${{ secrets.DOCKER_USER }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Create multi-platform tags
+      run: |
+        docker buildx imagetools create \
+          -t "$IMAGE:latest" \
+          -t "$IMAGE:$GITHUB_REF_NAME" \
+          "$IMAGE:$GITHUB_REF_NAME-amd64" \
+          "$IMAGE:$GITHUB_REF_NAME-arm64"
 
   release:
-    needs: build
-    if: github.ref_type == 'tag'
+    needs: merge
     runs-on: ubuntu-latest
     permissions:
       contents: write
