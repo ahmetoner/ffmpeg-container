@@ -4,7 +4,7 @@ ARG FFMPEG_VERSION
 
 RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get -qq update \
-    && apt-get -qq install --no-install-recommends \
+    && apt-get -qq install -y --no-install-recommends \
     build-essential \
     git \
     pkg-config \
