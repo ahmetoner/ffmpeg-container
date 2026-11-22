@@ -1,10 +1,10 @@
-FROM debian:bookworm-slim
+FROM debian:bookworm-slim AS build
 
 ARG FFMPEG_VERSION
 
 RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get -qq update \
-    && apt-get -qq install --no-install-recommends \
+    && apt-get -qq install -y --no-install-recommends \
     build-essential \
     git \
     pkg-config \
@@ -40,5 +40,12 @@ RUN ./configure \
     make -j$(nproc) && \
     make install && \
     hash -r
+
+# The published image only contains the ffmpeg binary, without the build toolchain
+FROM debian:bookworm-slim
+
+COPY --from=build /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
+
+WORKDIR /workspace
 
 ENTRYPOINT ["ffmpeg"]
