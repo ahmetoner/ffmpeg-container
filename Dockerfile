@@ -8,7 +8,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     build-essential \
     git \
     pkg-config \
-    yasm \
+    nasm \
     ca-certificates \
     gcc \
     python3-dev \
