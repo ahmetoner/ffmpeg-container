@@ -1,87 +1,72 @@
 # FFmpeg Container
 
-A lightweight Docker container for running FFmpeg commands.
+A minimal, LGPL-licensed FFmpeg build packaged as a Docker image.
 
-This container provides a ready-to-use FFmpeg environment for video and audio processing. FFmpeg is compiled from source with only its built-in (native) codecs and copied into a slim Debian image, keeping the image small. It is also used as a build layer by [whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice).
+## Goals
+
+- **Small and focused**: a slim Debian image containing only the `ffmpeg` binary, without compilers or build tools.
+- **Built from source**: FFmpeg is compiled from an official release tag, so each image maps to an exact upstream version.
+- **Redistributable**: only FFmpeg's built-in components are enabled, keeping the binary under the LGPL v2.1+ and free of GPL or non-free parts.
+- **Reusable build layer**: designed to be copied into other images, for example [whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice).
 
 ## Usage
 
-Pull and run the container:
+Run FFmpeg on files in the current directory:
 
 ```shell
-docker pull onerahmet/ffmpeg
-docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 output.mp4
+docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg:n9.1 -i input.mp4 -vn -c:a flac output.flac
 ```
 
-The `-v "$(pwd):/workspace"` flag mounts your current directory to `/workspace` inside the container, allowing FFmpeg to access your local files.
+Use it as a build layer in another image:
 
-### Example Commands
+```dockerfile
+FROM onerahmet/ffmpeg:n9.1 AS ffmpeg
 
-1. Convert video format:
-
-```shell
-docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 output.mkv
+FROM debian:bookworm-slim
+COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=ffmpeg /usr/local/share/doc/ffmpeg /usr/local/share/doc/ffmpeg
 ```
 
-2. Extract audio from video:
+The binary is built on Debian bookworm and runs on any glibc-based image with glibc 2.35 or newer.
 
-```shell
-docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -vn -c:a flac output.flac
-```
+## What Is Included
 
-3. Compress video:
+| | |
+|---|---|
+| Platforms | `linux/amd64`, `linux/arm64` |
+| Programs | `ffmpeg` (no `ffprobe` or `ffplay`) |
+| Input/output | Local files and pipes; network protocols are disabled |
+| Audio decoding | AAC, MP3, FLAC, Opus, Vorbis, ALAC, PCM |
+| Video decoding | H.264, HEVC, VP9, MPEG-4, MJPEG |
+| Encoding | AAC, FLAC, MP2, PCM, MPEG-4, MJPEG, FFV1 |
 
-```shell
-docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -c:v mpeg4 -q:v 5 -c:a aac output.mp4
-```
+External libraries such as libx264, libmp3lame or libdav1d are not included.
 
-4. Create video thumbnail:
+## Tags
 
-```shell
-docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -ss 00:00:01 -vframes 1 -q:v 2 thumbnail.jpg
-```
+Image tags follow FFmpeg release tags, for example `n9.1` or `n7.1`. `latest` points to the most recent release.
 
-## Building the Container
-
-The container requires specifying an FFmpeg version during build:
+## Building
 
 ```shell
 docker build --build-arg FFMPEG_VERSION=n9.1 -t onerahmet/ffmpeg:n9.1 .
 ```
 
-Available versions can be found in [FFmpeg's release tags](https://github.com/FFmpeg/FFmpeg/tags). For example:
+`FFMPEG_VERSION` is required and must be an [FFmpeg release tag](https://github.com/FFmpeg/FFmpeg/tags).
 
-- n9.1
-- n7.1
+## Releasing
 
-Note: The `FFMPEG_VERSION` build argument is required. The build will fail if not provided.
-
-## Features
-
-- Minimal image: a slim Debian base with just the `ffmpeg` binary
-- Built-in FFmpeg codecs only (e.g. AAC, FLAC, Opus, Vorbis, MP3 decoding, MPEG-4, MJPEG); external libraries such as libx264 or libmp3lame are not included
-- Simple volume mounting for file access
-- Supports all standard FFmpeg commands and options
-
-## Notes
-
-- All commands are run from the `/workspace` directory inside the container
-- Input and output files must be accessible in the mounted volume
-- Use absolute paths or paths relative to the mounted directory
+Pushing a git tag named after an FFmpeg release (for example `n9.1`) builds the image for both platforms and publishes it to Docker Hub as that tag and `latest`.
 
 ## License
 
-The files in this repository (Dockerfile, workflow, docs) are licensed under the MIT License - see the LICENCE file for details.
+The files in this repository are licensed under the MIT License, see [LICENCE](LICENCE).
 
-The published image contains an FFmpeg binary, which is licensed under the [LGPL v2.1 or later](https://www.ffmpeg.org/legal.html):
+The published image contains FFmpeg, licensed under the [LGPL v2.1 or later](https://www.ffmpeg.org/legal.html):
 
-- FFmpeg is configured without `--enable-gpl` and `--enable-nonfree`, so no GPL or non-free parts are included. Enabling either, or adding external libraries such as libx264, changes the license of the binary.
+- FFmpeg is configured without `--enable-gpl` and `--enable-nonfree`. Enabling either, or adding external libraries, changes the license of the binary.
 - The license text is included in the image at `/usr/local/share/doc/ffmpeg/`.
-- The corresponding source code is the FFmpeg release tag with the same name as the image tag (e.g. [n9.1](https://github.com/FFmpeg/FFmpeg/tree/n9.1)), built with the configuration in this repository's `Dockerfile`.
-- The build uses [NASM](https://www.nasm.us/) (BSD 2-Clause) as an assembler; it is not included in the published image.
-
-## Credits
-
-This container packages [FFmpeg](https://ffmpeg.org/), a complete, cross-platform solution to record, convert and stream audio and video. FFmpeg is licensed under the [LGPL v2.1+ License](https://www.ffmpeg.org/legal.html).
+- The corresponding source code is the FFmpeg release tag matching the image tag, built with the configuration in this repository's [Dockerfile](Dockerfile).
+- [NASM](https://www.nasm.us/) (BSD 2-Clause) is used to build FFmpeg and is not included in the image.
 
 FFmpeg is a trademark of [Fabrice Bellard](http://bellard.org/), originator of the FFmpeg project.
