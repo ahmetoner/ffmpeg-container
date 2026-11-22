@@ -44,7 +44,15 @@ RUN ./configure \
 # The published image only contains the ffmpeg binary, without the build toolchain
 FROM debian:bookworm-slim
 
+ARG FFMPEG_VERSION
+
+LABEL org.opencontainers.image.source="https://github.com/ahmetoner/ffmpeg-container" \
+      org.opencontainers.image.version="${FFMPEG_VERSION}" \
+      org.opencontainers.image.licenses="LGPL-2.1-or-later"
+
 COPY --from=build /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
+# FFmpeg is built without --enable-gpl and --enable-nonfree, so the LGPL v2.1+ applies to the binary
+COPY --from=build /FFmpeg-${FFMPEG_VERSION}/LICENSE.md /FFmpeg-${FFMPEG_VERSION}/COPYING.LGPLv2.1 /usr/local/share/doc/ffmpeg/
 
 WORKDIR /workspace
 
