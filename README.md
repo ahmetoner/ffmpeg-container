@@ -2,7 +2,7 @@
 
 A lightweight Docker container for running FFmpeg commands.
 
-This container provides a ready-to-use FFmpeg environment for video and audio processing. It's built on Alpine Linux to maintain a small footprint while including common FFmpeg codecs and tools.
+This container provides a ready-to-use FFmpeg environment for video and audio processing. FFmpeg is compiled from source with only its built-in (native) codecs and copied into a slim Debian image, keeping the image small. It is also used as a build layer by [whisper-asr-webservice](https://github.com/ahmetoner/whisper-asr-webservice).
 
 ## Usage
 
@@ -26,13 +26,13 @@ docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 output.mkv
 2. Extract audio from video:
 
 ```shell
-docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -vn -acodec libmp3lame output.mp3
+docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -vn -c:a flac output.flac
 ```
 
 3. Compress video:
 
 ```shell
-docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -c:v libx264 -crf 23 -preset medium -c:a aac output.mp4
+docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -c:v mpeg4 -q:v 5 -c:a aac output.mp4
 ```
 
 4. Create video thumbnail:
@@ -46,20 +46,20 @@ docker run --rm -v "$(pwd):/workspace" onerahmet/ffmpeg -i input.mp4 -ss 00:00:0
 The container requires specifying an FFmpeg version during build:
 
 ```shell
-docker build --build-arg FFMPEG_VERSION=n7.1 -t onerahmet/ffmpeg:7.1 .
+docker build --build-arg FFMPEG_VERSION=n9.1 -t onerahmet/ffmpeg:n9.1 .
 ```
 
 Available versions can be found in [FFmpeg's release tags](https://github.com/FFmpeg/FFmpeg/tags). For example:
 
+- n9.1
 - n7.1
-- n6.0
 
 Note: The `FFMPEG_VERSION` build argument is required. The build will fail if not provided.
 
 ## Features
 
-- Based on Alpine Linux for minimal image size (~120MB)
-- Includes common FFmpeg codecs and tools
+- Minimal image: a slim Debian base with just the `ffmpeg` binary
+- Built-in FFmpeg codecs only (e.g. AAC, FLAC, Opus, Vorbis, MP3 decoding, MPEG-4, MJPEG); external libraries such as libx264 or libmp3lame are not included
 - Simple volume mounting for file access
 - Supports all standard FFmpeg commands and options
 
