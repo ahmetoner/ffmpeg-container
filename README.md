@@ -71,7 +71,14 @@ Note: The `FFMPEG_VERSION` build argument is required. The build will fail if no
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+The files in this repository (Dockerfile, workflow, docs) are licensed under the MIT License - see the LICENCE file for details.
+
+The published image contains an FFmpeg binary, which is licensed under the [LGPL v2.1 or later](https://www.ffmpeg.org/legal.html):
+
+- FFmpeg is configured without `--enable-gpl` and `--enable-nonfree`, so no GPL or non-free parts are included. Enabling either, or adding external libraries such as libx264, changes the license of the binary.
+- The license text is included in the image at `/usr/local/share/doc/ffmpeg/`.
+- The corresponding source code is the FFmpeg release tag with the same name as the image tag (e.g. [n9.1](https://github.com/FFmpeg/FFmpeg/tree/n9.1)), built with the configuration in this repository's `Dockerfile`.
+- The build uses [NASM](https://www.nasm.us/) (BSD 2-Clause) as an assembler; it is not included in the published image.
 
 ## Credits
 
